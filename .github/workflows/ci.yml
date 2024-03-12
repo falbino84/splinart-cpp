@@ -3,7 +3,25 @@ name: "Run CI"
 on: pull_request
 
 jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: pre-commit/action@v3.0.1
+
+  cppcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - run:
+         pixi shell
+         pixi add cppcheck
+         cppcheck --enable=all -q --project=.build/compile_commands.json --suppressions-list=.cppcheck 2> cppcheck_err.txt
+         if [[ -s cppcheck_err.txt ]];
+         then
+             cat cppcheck_err.txt
+             exit 1
+         fi
   tests:
+    needs: pre-commit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -14,6 +32,7 @@ jobs:
       - run: pixi run test
 
   python_tests:
+    needs: pre-commit
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
