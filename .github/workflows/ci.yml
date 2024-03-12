@@ -8,20 +8,28 @@ jobs:
     steps:
     - uses: pre-commit/action@v3.0.1
 
+  install_depencies:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+         pixi shell
+         cmake -S . -B .build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=Debug -DBUILD_EXAMPLES=ON
+         pixi add cppcheck
+
   cppcheck:
     runs-on: ubuntu-latest
     steps:
-      - run:
+      - run: |
          pixi shell
-         pixi add cppcheck
-         cppcheck --enable=all -q --project=.build/compile_commands.json --suppressions-list=.cppcheck 2> cppcheck_err.txt
+         cppcheck --enable=all --disable=information -q --project=.build/compile_commands.json --suppressions-list=.cppcheck 2> cppcheck_err.txt
          if [[ -s cppcheck_err.txt ]];
          then
              cat cppcheck_err.txt
              exit 1
          fi
+
   tests:
-    needs: pre-commit
+    needs: [pre-commit, cppcheck]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -32,7 +40,7 @@ jobs:
       - run: pixi run test
 
   python_tests:
-    needs: pre-commit
+    needs: [pre-commit, cppcheck]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
